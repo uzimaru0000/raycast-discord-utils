@@ -1,0 +1,66 @@
+{
+  "$schema": "https://www.raycast.com/schemas/extension.json",
+  "name": "discord-utils",
+  "title": "discord utils",
+  "description": "Discord utils",
+  "icon": "command-icon.png",
+  "author": "uzimaru0000",
+  "categories": [
+    "Other"
+  ],
+  "license": "MIT",
+  "commands": [
+    {
+      "name": "activate",
+      "title": "Activate",
+      "description": "Activate Discord-Utils",
+      "mode": "no-view"
+    },
+    {
+      "name": "mute",
+      "title": "Mute",
+      "description": "Discord mute",
+      "mode": "no-view"
+    },
+    {
+      "name": "test",
+      "title": "test",
+      "description": "Discord mute",
+      "mode": "no-view"
+    }
+  ],
+  "dependencies": {
+    "@honojs/node-server": "^0.1.3",
+    "@raycast/api": "^1.44.0",
+    "discord-rpc": "^4.0.1",
+    "hono": "^2.6.2",
+    "is-running": "^2.1.0",
+    "node-fetch": "2",
+    "open": "^8.4.0",
+    "ps-tree": "^1.2.0"
+  },
+  "devDependencies": {
+    "@types/discord-rpc": "^4.0.3",
+    "@types/node": "18.8.3",
+    "@types/node-fetch": "^2.6.2",
+    "@types/ps-tree": "^1.1.2",
+    "@types/react": "18.0.9",
+    "@typescript-eslint/eslint-plugin": "^5.0.0",
+    "@typescript-eslint/parser": "^5.0.0",
+    "@vercel/ncc": "^0.36.0",
+    "eslint": "^7.32.0",
+    "eslint-config-prettier": "^8.3.0",
+    "prettier": "^2.5.1",
+    "typescript": "^4.9.4"
+  },
+  "scripts": {
+    "build": "ray build -e dist",
+    "dev": "ray develop",
+    "fix-lint": "ray lint --fix",
+    "lint": "ray lint",
+    "publish": "ray publish",
+    "build:server": "ncc build server/index.ts -o assets/dist/server --minify",
+    "dev:server": "npm run build:server -- -w",
+    "prebuild": "npm run build:server"
+  }
+}
