@@ -1,4 +1,4 @@
-import { open } from "@raycast/api";
+import { getPreferenceValues, open } from "@raycast/api";
 import { createServer } from "http";
 import fetch from "node-fetch";
 import html from "../assets/success";
@@ -6,22 +6,39 @@ import { createDaemon } from "./process";
 
 const RPC_SERVER_FILE_PATH = "dist/server/index.js";
 
-export const KEYS = {
-  ACCESS_TOKEN: "discord-utils-access-token",
-  PROCESS_ID: "discord-utils-process-id",
-  PORT: "discord-utils-port",
-} as const;
+export const getPreference = () => {
+  const { clientId, clientSecret, authorizePort } = getPreferenceValues<{
+    clientId?: string;
+    clientSecret?: string;
+    authorizePort?: string;
+  }>();
 
-export const clientId = "";
-export const clientSecret = "";
+  if (!clientId || !clientSecret) {
+    throw new Error("error");
+  }
+
+  return {
+    clientId,
+    clientSecret,
+    authorizePort: authorizePort ?? "3000",
+  };
+};
 
 export const authorize = async () => {
-  const url =
-    "https://discord.com/api/oauth2/authorize?client_id=1055502721433743491&redirect_uri=http%3A%2F%2Flocalhost%3A3000&response_type=code&scope=rpc";
+  const { clientId, clientSecret, authorizePort } = getPreference();
 
-  await open(url);
+  const url = new URL("https://discord.com/api/oauth2/authorize");
+  const sp = new URLSearchParams({
+    client_id: clientId,
+    redirect_url: `http://localhost:${authorizePort}`,
+    response_type: "code",
+    scope: "rpc",
+  });
+  url.search = sp.toString();
 
-  const getCode = onceSentRequest();
+  await open(url.href);
+
+  const getCode = onceSentRequest(Number(authorizePort));
   const code = await getCode;
 
   const params = new URLSearchParams({
@@ -40,11 +57,16 @@ export const authorize = async () => {
   return res.access_token as string;
 };
 
-export const createRPCClient = () => {
+export const createRPCClient = (clientId: string, clientSecret: string, accessToken: string) => {
   const port = Math.floor(Math.random() * (50000 - 3000) + 3000);
 
   return {
-    pid: createDaemon(RPC_SERVER_FILE_PATH, { PORT: port.toString() }),
+    pid: createDaemon(RPC_SERVER_FILE_PATH, {
+      PORT: port.toString(),
+      CLIENT_ID: clientId,
+      CLIENT_SECRET: clientSecret,
+      ACCESS_TOKEN: accessToken,
+    }),
     port,
   };
 };
@@ -58,7 +80,29 @@ export const healthCheck = async (port: number) => {
   }
 };
 
-const onceSentRequest = async () => {
+export const mute = async (port: number) => {
+  try {
+    const res = await fetch(`http://localhost:${port}/_/mute`, {
+      method: "POST",
+    }).then((x) => {
+      if (x.ok) {
+        return x.json();
+      } else {
+        throw new Error("failed");
+      }
+    });
+
+    if (Object.keys(res).includes("mute")) {
+      return res.mute as boolean;
+    } else {
+      throw new Error("failed");
+    }
+  } catch {
+    throw new Error("failed");
+  }
+};
+
+const onceSentRequest = async (port: number) => {
   return new Promise<string>((resolve, reject) => {
     const server = createServer((req, res) => {
       res.statusCode = 200;
@@ -71,7 +115,7 @@ const onceSentRequest = async () => {
           throw "error";
         }
 
-        const params = new URL(url, "http://localhost:3000").searchParams;
+        const params = new URL(url, `http://localhost:${port}`).searchParams;
         const code = params.get("code");
 
         if (code) {
@@ -89,7 +133,7 @@ const onceSentRequest = async () => {
     });
 
     server
-      .listen(3000)
+      .listen(port)
       .once("listening", () => {
         console.log("listen");
       })

@@ -1,11 +1,7 @@
-import { LocalStorage, showHUD } from "@raycast/api";
-import { KEYS } from "./lib/discord";
-import { checkProcess, createDaemon } from "./lib/process";
+import { getStore } from "./lib/store";
 
 export default async () => {
-  const items = await LocalStorage.allItems();
+  const items = await getStore();
 
   console.log(items);
-
-  console.log(await checkProcess(items[KEYS.PROCESS_ID]));
 };
