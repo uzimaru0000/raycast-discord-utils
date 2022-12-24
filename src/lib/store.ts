@@ -1,6 +1,6 @@
 import { LocalStorage } from "@raycast/api";
 
-type Store = {
+export type Store = {
   ACCESS_TOKEN: string;
   PROCESS_ID: number;
   PORT: number;

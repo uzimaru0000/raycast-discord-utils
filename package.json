@@ -23,6 +23,18 @@
       "mode": "no-view"
     },
     {
+      "name": "join",
+      "title": "Join",
+      "description": "Discord join voice channel",
+      "mode": "view"
+    },
+    {
+      "name": "exit",
+      "title": "Exit",
+      "description": "Exit voice channel",
+      "mode": "no-view"
+    },
+    {
       "name": "test",
       "title": "test",
       "description": "Discord mute",

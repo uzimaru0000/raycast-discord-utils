@@ -1,5 +1,5 @@
 import { showHUD } from "@raycast/api";
-import { mute } from "./lib/discord";
+import { exit } from "./lib/discord";
 import { getStore } from "./lib/store";
 
 export default async function main() {
@@ -11,8 +11,8 @@ export default async function main() {
   }
 
   try {
-    const muteState = await mute(PORT);
-    await showHUD(muteState ? "mute" : "unmute");
+    await exit(PORT);
+    await showHUD("exit");
   } catch {
     await showHUD('Error: Execute "activate"');
   }

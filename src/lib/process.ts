@@ -12,8 +12,12 @@ export const createDaemon = (script: string, env?: Record<string, string>) => {
   const root = environment.assetsPath;
 
   const child = spawn(node, ["-e", `require("${root}/${script}")`], {
-    env,
+    env: {
+      ...process.env,
+      ...env,
+    },
     detached: true,
+    stdio: "ignore",
   });
   child.unref();
 

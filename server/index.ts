@@ -8,7 +8,7 @@ const CLIENT_ID = process.env.CLIENT_ID;
 const CLIENT_SECRET = process.env.CLIENT_SECRET;
 
 if (!ACCESS_TOKEN || !CLIENT_ID || !CLIENT_SECRET) {
-  console.error("必要な引数がありません");
+  console.log("必要な引数がありません");
   exit(1);
 }
 
@@ -18,7 +18,7 @@ const getClient = (() => {
   let client: Client | null = null;
 
   return async () => {
-    if (client) {
+    if (client && client.user) {
       return client;
     }
 
@@ -50,6 +50,7 @@ app
         return;
       }
     } catch (e) {
+      console.log(e);
       res.status(500).json(e);
       return;
     }
@@ -66,6 +67,61 @@ app
 
       res.status(200).json({ mute: setting.mute });
     } catch (e) {
+      console.log(e);
+      res.status(500).json({ error: e });
+    }
+  })
+  .post("/_/join", async (req, res) => {
+    try {
+      const client = await getClient();
+      const id = req.query["id"] as string;
+
+      await client.selectVoiceChannel(id, {
+        force: true,
+      });
+
+      res.status(200).json({ success: true });
+    } catch (e) {
+      console.log(e);
+      res.status(500).json({ error: e });
+    }
+  })
+  .post("/_/exit", async (_, res) => {
+    try {
+      const client = await getClient();
+
+      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+      // @ts-ignore
+      await client.selectVoiceChannel(undefined);
+
+      res.status(200).json({ success: true });
+    } catch (e) {
+      console.log(e);
+      res.status(500).json({ error: e });
+    }
+  })
+  .get("/_/guilds", async (_, res) => {
+    try {
+      const client = await getClient();
+
+      const guilds = await client.getGuilds();
+
+      res.status(200).json(guilds);
+    } catch (e) {
+      console.log(e);
+      res.status(500).json({ error: e });
+    }
+  })
+  .get("/_/channels", async (req, res) => {
+    try {
+      const client = await getClient();
+      const gId = req.query["gid"] as string;
+
+      const channels = await client.getChannels(gId);
+
+      res.status(200).json(channels.filter((x) => x.type === 2));
+    } catch (e) {
+      console.log(e);
       res.status(500).json({ error: e });
     }
   });

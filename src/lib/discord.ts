@@ -1,4 +1,5 @@
 import { getPreferenceValues, open } from "@raycast/api";
+import { Channel, Guild } from "discord-rpc";
 import { createServer } from "http";
 import fetch from "node-fetch";
 import html from "../assets/success";
@@ -97,6 +98,74 @@ export const mute = async (port: number) => {
     } else {
       throw new Error("failed");
     }
+  } catch {
+    throw new Error("failed");
+  }
+};
+
+export const getServerList = async (port: number): Promise<Guild[]> => {
+  try {
+    const res = await fetch(`http://localhost:${port}/_/guilds`).then((x) => {
+      if (x.ok) {
+        return x.json();
+      } else {
+        throw new Error("failed");
+      }
+    });
+
+    return res.guilds;
+  } catch {
+    throw new Error("failed");
+  }
+};
+
+export const getChannelList = async (port: number, gid: string): Promise<Channel[]> => {
+  try {
+    const res = await fetch(`http://localhost:${port}/_/channels?gid=${gid}`).then((x) => {
+      if (x.ok) {
+        return x.json();
+      } else {
+        throw new Error("failed");
+      }
+    });
+
+    return res;
+  } catch {
+    throw new Error("failed");
+  }
+};
+
+export const join = async (port: number, id: string) => {
+  try {
+    const res = await fetch(`http://localhost:${port}/_/join?id=${id}`, {
+      method: "POST",
+    }).then((x) => {
+      if (x.ok) {
+        return x.json();
+      } else {
+        throw new Error("failed");
+      }
+    });
+
+    return res;
+  } catch {
+    throw new Error("failed");
+  }
+};
+
+export const exit = async (port: number) => {
+  try {
+    const res = await fetch(`http://localhost:${port}/_/exit`, {
+      method: "POST",
+    }).then((x) => {
+      if (x.ok) {
+        return x.json();
+      } else {
+        throw new Error("failed");
+      }
+    });
+
+    return res;
   } catch {
     throw new Error("failed");
   }
