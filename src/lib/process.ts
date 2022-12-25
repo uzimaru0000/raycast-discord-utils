@@ -19,7 +19,6 @@ export const createDaemon = (script: string, env?: Record<string, string>) => {
     detached: true,
     stdio: "ignore",
   });
-  child.unref();
 
   return child.pid;
 };
