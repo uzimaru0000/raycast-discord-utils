@@ -1,10 +1,11 @@
 {
   "$schema": "https://www.raycast.com/schemas/extension.json",
   "name": "raycast-discord-utils",
-  "title": "raycast-discord utils",
-  "description": "Discord utils",
+  "title": "Raycast-discord-utils",
+  "description": "Discord is manipulated using the RPC API",
   "icon": "command-icon.png",
   "author": "uzimaru0000",
+  "owner": "uzimaru0000",
   "categories": [
     "Other"
   ],
@@ -32,18 +33,6 @@
       "name": "exit",
       "title": "Exit",
       "description": "Exit voice channel",
-      "mode": "no-view"
-    },
-    {
-      "name": "test",
-      "title": "test",
-      "description": "Discord mute",
-      "mode": "no-view"
-    },
-    {
-      "name": "clear",
-      "title": "clear",
-      "description": "Discord mute",
       "mode": "no-view"
     }
   ],
