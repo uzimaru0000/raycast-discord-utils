@@ -1,8 +1,9 @@
-import { getPreferenceValues, open } from "@raycast/api";
+import { environment, getPreferenceValues, open } from "@raycast/api";
 import { Channel, Guild } from "discord-rpc";
+import { readFileSync } from "fs";
 import { createServer } from "http";
 import fetch from "node-fetch";
-import html from "../assets/success";
+import path from "path";
 import { createDaemon } from "./process";
 
 const RPC_SERVER_FILE_PATH = "dist/server/index.js";
@@ -65,6 +66,7 @@ export const authorize = async () => {
   } catch (e) {
     if (typeof e === "function") {
       e();
+      throw new Error("error");
     } else {
       throw e;
     }
@@ -210,12 +212,12 @@ export const exit = async (port: number) => {
 };
 
 const onceSentRequest = (port: number) => {
+  const assetsPath = environment.assetsPath;
+  const successHtml = readFileSync(path.join(assetsPath, "success.html"));
+  const failedHtml = readFileSync(path.join(assetsPath, "failed.html"));
+
   return new Promise<string>((resolve, reject) => {
     const server = createServer((req, res) => {
-      res.statusCode = 200;
-      res.write(html);
-      res.end();
-
       try {
         const url = req.url;
         if (!url) {
@@ -226,21 +228,28 @@ const onceSentRequest = (port: number) => {
         const code = params.get("code");
 
         if (code) {
+          res.statusCode = 200;
+          res.write(successHtml);
           resolve(code);
         } else {
           throw "error";
         }
-      } catch (e) {
-        reject(server.close);
+      } catch {
+        res.statusCode = 500;
+        res.write(failedHtml);
+
+        reject(() => server.close());
       } finally {
+        res.end();
+
         req.socket.end();
         req.socket.destroy();
         server.close();
       }
     });
 
-    server.listen(port).once("error", (err) => {
-      reject(server.close);
+    server.listen(port).once("error", () => {
+      reject(() => server.close());
     });
   });
 };
