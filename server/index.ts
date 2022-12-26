@@ -1,6 +1,18 @@
 import { Client } from "discord-rpc";
 import Express from "express";
+import { createWriteStream, existsSync, writeFileSync } from "fs";
+import path from "path";
 import { exit } from "process";
+
+const log = (d: unknown) => {
+  const logPath = path.join(__dirname, "log.txt");
+  if (!existsSync(logPath)) {
+    writeFileSync(logPath, "");
+  }
+
+  const logStream = createWriteStream(logPath);
+  logStream.write(`${d}\n`);
+};
 
 const PORT = process.env.PORT;
 const ACCESS_TOKEN = process.env.ACCESS_TOKEN;
@@ -50,7 +62,7 @@ app
         return;
       }
     } catch (e) {
-      console.log(e);
+      log(e);
       res.status(500).json(e);
       return;
     }
@@ -67,7 +79,7 @@ app
 
       res.status(200).json({ mute: setting.mute });
     } catch (e) {
-      console.log(e);
+      log(e);
       res.status(500).json({ error: e });
     }
   })
@@ -82,7 +94,7 @@ app
 
       res.status(200).json({ success: true });
     } catch (e) {
-      console.log(e);
+      log(e);
       res.status(500).json({ error: e });
     }
   })
@@ -96,7 +108,7 @@ app
 
       res.status(200).json({ success: true });
     } catch (e) {
-      console.log(e);
+      log(e);
       res.status(500).json({ error: e });
     }
   })
@@ -108,7 +120,7 @@ app
 
       res.status(200).json(guilds);
     } catch (e) {
-      console.log(e);
+      log(e);
       res.status(500).json({ error: e });
     }
   })
@@ -121,7 +133,7 @@ app
 
       res.status(200).json(channels.filter((x) => x.type === 2));
     } catch (e) {
-      console.log(e);
+      log(e);
       res.status(500).json({ error: e });
     }
   });
