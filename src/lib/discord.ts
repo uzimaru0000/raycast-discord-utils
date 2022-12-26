@@ -39,15 +39,43 @@ export const authorize = async () => {
 
   await open(url.href);
 
-  const getCode = onceSentRequest(Number(authorizePort));
-  const code = await getCode;
+  const [getCode, cancel] = onceSentRequest(Number(authorizePort));
+  try {
+    const code = await getCode;
+
+    const params = new URLSearchParams({
+      redirect_uri: "http://localhost:3000",
+      client_id: clientId,
+      client_secret: clientSecret,
+      grant_type: "authorization_code",
+      code: code,
+    });
+
+    const res = await fetch("https://discordapp.com/api/oauth2/token", {
+      method: "POST",
+      body: params,
+    }).then((x) => x.json());
+
+    return {
+      accessToken: res.access_token as string,
+      expiresIn: res.expires_in as number,
+      refreshToken: res.refresh_token as string,
+    } as const;
+  } catch (e) {
+    cancel();
+    throw e;
+  }
+};
+
+export const refreshActivate = async (refreshToken: string) => {
+  const { clientId, clientSecret } = getPreference();
 
   const params = new URLSearchParams({
     redirect_uri: "http://localhost:3000",
     client_id: clientId,
     client_secret: clientSecret,
-    grant_type: "authorization_code",
-    code: code,
+    grant_type: "refresh_token",
+    refresh_token: refreshToken,
   });
 
   const res = await fetch("https://discordapp.com/api/oauth2/token", {
@@ -55,7 +83,11 @@ export const authorize = async () => {
     body: params,
   }).then((x) => x.json());
 
-  return res.access_token as string;
+  return {
+    accessToken: res.access_token as string,
+    expiresIn: res.expires_in as number,
+    refreshToken: res.refresh_token as string,
+  } as const;
 };
 
 export const createRPCClient = (clientId: string, clientSecret: string, accessToken: string) => {
@@ -171,46 +203,48 @@ export const exit = async (port: number) => {
   }
 };
 
-const onceSentRequest = async (port: number) => {
-  return new Promise<string>((resolve, reject) => {
-    const server = createServer((req, res) => {
-      res.statusCode = 200;
-      res.write(html);
-      res.end();
+const onceSentRequest = (port: number) => {
+  const cancel = new EventTarget();
 
-      try {
-        const url = req.url;
-        if (!url) {
-          throw "error";
+  return [
+    new Promise<string>((resolve, reject) => {
+      const server = createServer((req, res) => {
+        res.statusCode = 200;
+        res.write(html);
+        res.end();
+
+        try {
+          const url = req.url;
+          if (!url) {
+            throw "error";
+          }
+
+          const params = new URL(url, `http://localhost:${port}`).searchParams;
+          const code = params.get("code");
+
+          if (code) {
+            resolve(code);
+          } else {
+            throw "error";
+          }
+        } catch (e) {
+          reject(e);
+        } finally {
+          req.socket.end();
+          req.socket.destroy();
+          server.close();
         }
-
-        const params = new URL(url, `http://localhost:${port}`).searchParams;
-        const code = params.get("code");
-
-        if (code) {
-          resolve(code);
-        } else {
-          throw "error";
-        }
-      } catch (e) {
-        reject(e);
-      } finally {
-        req.socket.end();
-        req.socket.destroy();
-        server.close();
-      }
-    });
-
-    server
-      .listen(port)
-      .once("listening", () => {
-        console.log("listen");
-      })
-      .once("error", (err) => {
-        reject(err);
-      })
-      .once("close", () => {
-        console.log("close");
       });
-  });
+
+      server.listen(port).once("error", (err) => {
+        reject(err);
+      });
+
+      cancel.addEventListener("cancel", () => {
+        reject();
+        server.close();
+      });
+    }),
+    () => cancel.dispatchEvent(new Event("cancel")),
+  ] as const;
 };

@@ -8,6 +8,6 @@ export default async () => {
     process.kill(PROCESS_ID, 9);
   }
 
-  await removeStore("ACCESS_TOKEN", "PORT", "PROCESS_ID");
+  await removeStore("ACCESS_TOKEN", "PORT", "PROCESS_ID", "LATEST_SERVER");
   await showHUD("clear");
 };
