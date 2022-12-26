@@ -1,6 +1,16 @@
-import { Action, ActionPanel, closeMainWindow, List, PopToRootType, showHUD, useNavigation } from "@raycast/api";
+import {
+  Action,
+  ActionPanel,
+  closeMainWindow,
+  List,
+  PopToRootType,
+  showHUD,
+  useNavigation,
+  Icon,
+  LocalStorage,
+} from "@raycast/api";
 import { Channel, Guild } from "discord-rpc";
-import { FC, useCallback, useEffect, useState } from "react";
+import { FC, useCallback, useEffect, useMemo, useState } from "react";
 import { getChannelList, getServerList, join } from "./lib/discord";
 import { getStore, setStore, Store } from "./lib/store";
 
@@ -40,25 +50,30 @@ const ShowServerList: FC<{ port: number; latestServer?: Guild }> = ({ port, late
   return (
     <List>
       {latestServer && (
-        <ServerListItem
-          server={latestServer}
-          onAction={() => {
-            nav.push(<ShowChannelList port={port} gid={latestServer.id} />);
-          }}
-        />
-      )}
-      {guilds.map((x) => {
-        return (
+        <List.Section title="Latest select">
           <ServerListItem
-            key={x.id}
-            server={x}
+            server={latestServer}
             onAction={() => {
-              setLatestServer(x);
-              nav.push(<ShowChannelList port={port} gid={x.id} />);
+              nav.push(<ShowChannelList port={port} gid={latestServer.id} />);
             }}
           />
-        );
-      })}
+        </List.Section>
+      )}
+
+      <List.Section title="Joined server">
+        {guilds.map((x) => {
+          return (
+            <ServerListItem
+              key={x.id}
+              server={x}
+              onAction={() => {
+                setLatestServer(x);
+                nav.push(<ShowChannelList port={port} gid={x.id} />);
+              }}
+            />
+          );
+        })}
+      </List.Section>
     </List>
   );
 };
@@ -79,6 +94,13 @@ const ServerListItem: FC<{ server: Guild; onAction: () => void }> = ({ server, o
 
 const ShowChannelList: FC<{ port: number; gid: string }> = ({ port, gid }) => {
   const [channels, setChannels] = useState<Channel[]>([]);
+  const [favoriteChannels, setFavoriteChannels] = useState<Channel[]>([]);
+  const favoriteChannelMap = useMemo(() => {
+    return Object.fromEntries(favoriteChannels.map((x) => [x.id, x]));
+  }, [favoriteChannels]);
+  const unfavoriteChannels = useMemo(() => {
+    return channels.filter((x) => !favoriteChannelMap[x.id]);
+  }, [favoriteChannelMap]);
 
   const joinChannel = useCallback(
     async (id: string) => {
@@ -86,36 +108,96 @@ const ShowChannelList: FC<{ port: number; gid: string }> = ({ port, gid }) => {
     },
     [port]
   );
+  const favoriteChannel = useCallback(
+    async (channel: Channel) => {
+      const storedChannel = await LocalStorage.getItem(`${gid}-favorite-channel`).then((x) =>
+        x ? JSON.parse(x as string) : []
+      );
+      const channels = [...storedChannel, channel];
+      await LocalStorage.setItem(`${gid}-favorite-channel`, JSON.stringify(channels));
+
+      setFavoriteChannels(channels);
+    },
+    [gid]
+  );
+  const removeFavoriteChannel = useCallback(
+    async (channel: Channel) => {
+      const storedChannel = (await LocalStorage.getItem(`${gid}-favorite-channel`).then((x) =>
+        x ? JSON.parse(x as string) : []
+      )) as Channel[];
+      const channels = storedChannel.filter((x) => x.id !== channel.id);
+      await LocalStorage.setItem(`${gid}-favorite-channel`, JSON.stringify(channels));
+
+      setFavoriteChannels(channels);
+    },
+    [gid]
+  );
+  const Actions = useCallback(
+    ({ channel }: { channel: Channel }) => {
+      return (
+        <ActionPanel>
+          <Action
+            title="Join this channel"
+            onAction={() => {
+              joinChannel(channel.id).then(async () => {
+                await closeMainWindow({
+                  clearRootSearch: true,
+                  popToRootType: PopToRootType.Immediate,
+                });
+                await showHUD(`Join to ${channel.name}`);
+              });
+            }}
+          />
+          <Action
+            title={favoriteChannelMap[channel.id] ? "Remove favorite" : "Favorite"}
+            icon={favoriteChannelMap[channel.id] ? Icon.Star : Icon.StarDisabled}
+            onAction={() => {
+              if (favoriteChannelMap[channel.id]) {
+                removeFavoriteChannel(channel);
+              } else {
+                favoriteChannel(channel);
+              }
+            }}
+          />
+        </ActionPanel>
+      );
+    },
+    [joinChannel, favoriteChannelMap, removeFavoriteChannel, favoriteChannel]
+  );
+
   useEffect(() => {
-    getChannelList(port, gid).then((x) => setChannels(x));
+    const func = async () => {
+      const channels = await getChannelList(port, gid);
+      const storedChannel = (await LocalStorage.getItem(`${gid}-favorite-channel`).then((x) =>
+        x ? JSON.parse(x as string) : []
+      )) as Channel[];
+
+      const mappedValue = channels.map((x) => {
+        return {
+          ...x,
+          isFavorite: storedChannel.map((x) => x.id).includes(x.id),
+        };
+      });
+
+      setChannels(mappedValue);
+      setFavoriteChannels(storedChannel);
+    };
+
+    func();
   }, [port, gid]);
 
   return (
     <List>
-      {channels.map((x) => {
-        return (
-          <List.Item
-            key={x.id}
-            title={x.name}
-            actions={
-              <ActionPanel>
-                <Action
-                  title="Join this channel"
-                  onAction={() => {
-                    joinChannel(x.id).then(async () => {
-                      await closeMainWindow({
-                        clearRootSearch: true,
-                        popToRootType: PopToRootType.Immediate,
-                      });
-                      await showHUD(`Join to ${x.name}`);
-                    });
-                  }}
-                />
-              </ActionPanel>
-            }
-          />
-        );
-      })}
+      <List.Section title="Favorite channels">
+        {favoriteChannels.map((x) => {
+          return <List.Item key={x.id} title={x.name} actions={<Actions channel={x} />} />;
+        })}
+      </List.Section>
+      <List.Section title="Channel list">
+        {unfavoriteChannels.map((x) => {
+          return <List.Item key={x.id} title={x.name} actions={<Actions channel={x} />} />;
+        })}
+      </List.Section>
     </List>
   );
 };
