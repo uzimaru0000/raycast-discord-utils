@@ -1,5 +1,6 @@
 {
   "$schema": "https://www.raycast.com/schemas/extension.json",
+  "version": "0.1.0",
   "name": "raycast-discord-utils",
   "title": "Raycast-discord-utils",
   "description": "Discord is manipulated using the RPC API",
