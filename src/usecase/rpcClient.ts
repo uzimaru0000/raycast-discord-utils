@@ -48,20 +48,25 @@ export const activate = async (): Promise<boolean> => {
     return true;
   }
 
-  const { accessToken, expiresIn, refreshToken } = await authorize();
-  const { pid, port } = createRPCClient(clientId, clientSecret, accessToken);
+  try {
+    const { accessToken, expiresIn, refreshToken } = await authorize();
+    const { pid, port } = createRPCClient(clientId, clientSecret, accessToken);
 
-  if (!pid) {
+    if (!pid) {
+      return false;
+    }
+
+    await setStore({
+      PROCESS_ID: pid,
+      PORT: port,
+      ACCESS_TOKEN: accessToken,
+      REFRESH_TOKEN: refreshToken,
+      TOKEN_EXPIRE: Date.now() + expiresIn * 1000,
+    });
+
+    return true;
+  } catch (e) {
+    console.log(e);
     return false;
   }
-
-  await setStore({
-    PROCESS_ID: pid,
-    PORT: port,
-    ACCESS_TOKEN: accessToken,
-    REFRESH_TOKEN: refreshToken,
-    TOKEN_EXPIRE: Date.now() + expiresIn * 1000,
-  });
-
-  return true;
 };

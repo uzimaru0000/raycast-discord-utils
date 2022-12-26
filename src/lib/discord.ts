@@ -37,10 +37,11 @@ export const authorize = async () => {
   });
   url.search = sp.toString();
 
-  await open(url.href);
-
-  const [getCode, cancel] = onceSentRequest(Number(authorizePort));
   try {
+    const getCode = onceSentRequest(Number(authorizePort));
+
+    await open(url.href);
+
     const code = await getCode;
 
     const params = new URLSearchParams({
@@ -62,9 +63,14 @@ export const authorize = async () => {
       refreshToken: res.refresh_token as string,
     } as const;
   } catch (e) {
-    cancel();
-    throw e;
+    if (typeof e === "function") {
+      e();
+    } else {
+      throw e;
+    }
   }
+
+  return {} as never;
 };
 
 export const refreshActivate = async (refreshToken: string) => {
@@ -204,47 +210,37 @@ export const exit = async (port: number) => {
 };
 
 const onceSentRequest = (port: number) => {
-  const cancel = new EventTarget();
+  return new Promise<string>((resolve, reject) => {
+    const server = createServer((req, res) => {
+      res.statusCode = 200;
+      res.write(html);
+      res.end();
 
-  return [
-    new Promise<string>((resolve, reject) => {
-      const server = createServer((req, res) => {
-        res.statusCode = 200;
-        res.write(html);
-        res.end();
-
-        try {
-          const url = req.url;
-          if (!url) {
-            throw "error";
-          }
-
-          const params = new URL(url, `http://localhost:${port}`).searchParams;
-          const code = params.get("code");
-
-          if (code) {
-            resolve(code);
-          } else {
-            throw "error";
-          }
-        } catch (e) {
-          reject(e);
-        } finally {
-          req.socket.end();
-          req.socket.destroy();
-          server.close();
+      try {
+        const url = req.url;
+        if (!url) {
+          throw "error";
         }
-      });
 
-      server.listen(port).once("error", (err) => {
-        reject(err);
-      });
+        const params = new URL(url, `http://localhost:${port}`).searchParams;
+        const code = params.get("code");
 
-      cancel.addEventListener("cancel", () => {
-        reject();
+        if (code) {
+          resolve(code);
+        } else {
+          throw "error";
+        }
+      } catch (e) {
+        reject(server.close);
+      } finally {
+        req.socket.end();
+        req.socket.destroy();
         server.close();
-      });
-    }),
-    () => cancel.dispatchEvent(new Event("cancel")),
-  ] as const;
+      }
+    });
+
+    server.listen(port).once("error", (err) => {
+      reject(server.close);
+    });
+  });
 };
